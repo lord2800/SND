@@ -261,6 +261,8 @@ local function queue_for_fishing(route)
     wait_for_addon('Talk')
     dismiss_talk()
     wait_for_addon('SelectString')
+    -- wait another moment for the select screen to fully load
+    wait()
     yield('/click SelectString Entries[0].Select')
     wait()
     yield('/click SelectString Entries[' .. route .. '].Select')
@@ -386,6 +388,7 @@ local function main(character, route, gearset, repair_threshold, autoretainer_en
         end
 
         if GetCharacterName(true) ~= character then
+            verbose('Not currently on ' .. character .. ', attempting to relog')
             ARSetMultiModeEnabled(false)
             wait()
             ARRelog(character)
