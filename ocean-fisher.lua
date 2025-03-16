@@ -115,6 +115,10 @@ local function wait_for_condition(condition, state, duration)
     until GetCharacterCondition(condition) == state
 end
 
+local function on_title_screen()
+    return IsAddonVisible('_TitleLogo') or IsAddonVisible('_CharaSelectTitle')
+end
+
 local function dismiss_talk()
     repeat
         if (IsAddonReady("Talk") and IsAddonVisible("Talk")) then
@@ -355,6 +359,27 @@ local function ensure_fisher(gearset)
     end
 end
 
+local function need_to_relog(character)
+    return on_title_screen() or (IsPlayerAvailable() and GetCharacterName(true) ~= character)
+end
+
+local function relog(character)
+    verbose('Not currently on ' .. character .. ', attempting to relog')
+    local attempts = 0
+    repeat
+        ARSetMultiModeEnabled(true)
+        verbose('Attempting to relog to ' .. character)
+        wait()
+        ARRelog(character)
+        wait(1)
+        if GetCharacterName(true) == character then
+            break
+        end
+        attempts = attempts + 1
+    until attempts == 5
+    ARSetMultiModeEnabled(false)
+end
+
 local function main(character, route, gearset, repair_threshold, autoretainer_enabled, do_subs, destination)
     verbose('Starting')
     if character == nil then
@@ -368,7 +393,7 @@ local function main(character, route, gearset, repair_threshold, autoretainer_en
             break
         end
 
-        if is_ocean_fishing_time() then
+        if is_ocean_fishing_time() and GetCharacterName(true) == character then
             verbose('Time to ocean fish')
             ensure_fisher(gearset)
             lifestream('oceanfish')
@@ -387,11 +412,8 @@ local function main(character, route, gearset, repair_threshold, autoretainer_en
             process_autoretainer(do_subs)
         end
 
-        if GetCharacterName(true) ~= character then
-            verbose('Not currently on ' .. character .. ', attempting to relog')
-            ARSetMultiModeEnabled(false)
-            wait()
-            ARRelog(character)
+        if need_to_relog(character) then
+            relog(character)
         end
 
         wait(1)
