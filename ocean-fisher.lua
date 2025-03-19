@@ -371,7 +371,9 @@ local function relog(character)
         info('Attempting to relog to ' .. character)
         wait()
         ARRelog(character)
-        wait(1)
+        while ARIsBusy() do
+            wait()
+        end
         if GetCharacterName(true) == character then
             break
         end
