@@ -93,8 +93,8 @@ local watching_cutscene_condition = 35
 
 -- functions
 
-local function verbose(msg)
-    LogVerbose('[OceanFisher] ' .. msg)
+local function info(msg)
+    LogInfo('[OceanFisher] ' .. msg)
 end
 
 local function wait(duration)
@@ -102,14 +102,14 @@ local function wait(duration)
 end
 
 local function wait_for_addon(addon)
-    verbose('Waiting for addon ' .. addon)
+    info('Waiting for addon ' .. addon)
     while not IsAddonReady(addon) do
         wait()
     end
 end
 
 local function wait_for_condition(condition, state, duration)
-    verbose('Waiting for condition ' .. tostring(condition) .. ' to be ' .. tostring(state))
+    info('Waiting for condition ' .. tostring(condition) .. ' to be ' .. tostring(state))
     repeat
         wait(duration)
     until GetCharacterCondition(condition) == state
@@ -130,7 +130,7 @@ local function dismiss_talk()
 end
 
 local function wait_for_ready()
-    verbose('Waiting for player ready')
+    info('Waiting for player ready')
     while not IsPlayerAvailable() do
         wait()
     end
@@ -140,7 +140,7 @@ local function wait_for_ready()
 end
 
 local function lifestream(command)
-    verbose('Executing lifestream command ' .. command)
+    info('Executing lifestream command ' .. command)
     LifestreamExecuteCommand(command)
     while LifestreamIsBusy() do
         wait()
@@ -156,19 +156,19 @@ local function need_autoretainer(only_subs)
 end
 
 local function process_autoretainer(only_subs)
-    verbose('Processing AutoRetainer')
+    info('Processing AutoRetainer')
     ARSetMultiModeEnabled(true)
-    repeat
-        verbose('Waiting for autoretainer...')
+    while need_autoretainer(only_subs) or ARIsBusy() do
+        info('Waiting for autoretainer...')
         wait(10)
-    until not need_autoretainer(only_subs)
-    verbose('Finished processing AutoRetainer')
+    end
+    info('Finished processing AutoRetainer')
     ARSetMultiModeEnabled(false)
     wait(10)
 end
 
 local function repair_all()
-    verbose('Repairing')
+    info('Repairing')
     while not IsAddonReady("Repair") do
         yield("/generalaction repair")
         wait()
@@ -193,7 +193,7 @@ end
 
 local function close_results()
     wait_for_results_dialog()
-    verbose('Closing results dialog')
+    info('Closing results dialog')
     wait()
     yield('/callback IKDResult true 0')
     wait_for_ready()
@@ -222,7 +222,7 @@ local function move_to_deck()
 end
 
 local function wait_for_start()
-    verbose('Waiting for duty start')
+    info('Waiting for duty start')
     while not DutyState.IsDutyStarted do
         wait()
     end
@@ -237,14 +237,14 @@ local function ensure_correct_bait()
     local current_bait = GetCurrentBait()
 
     while current_bait ~= correct_bait.id and GetCurrentOceanFishingZoneTimeLeft() > 35 do
-        verbose('Current bait is ' .. current_bait .. ', correct bait is ' .. correct_bait.id .. ' (' .. correct_bait.name .. ')')
+        info('Current bait is ' .. current_bait .. ', correct bait is ' .. correct_bait.id .. ' (' .. correct_bait.name .. ')')
         wait_until_not_fishing()
         SetAutoHookState(false)
-        verbose('Attempting to set bait to ' .. correct_bait.name)
+        info('Attempting to set bait to ' .. correct_bait.name)
         yield('/bait ' .. correct_bait.name)
         wait()
         current_bait = GetCurrentBait()
-        verbose('Bait is now set to ' .. current_bait)
+        info('Bait is now set to ' .. current_bait)
     end
     SetAutoHookState(true)
 end
@@ -257,7 +257,7 @@ local function is_ocean_fishing_time()
 end
 
 local function queue_for_fishing(route)
-    verbose('Queueing for ocean fishing on route ' .. route)
+    info('Queueing for ocean fishing on route ' .. route)
     -- TODO clean this all up with proper waiting wrapper functions
     yield('/target ' .. fishing_npc)
     wait()
@@ -283,14 +283,14 @@ local function ensure_casting()
     wait(2)
     local attempts = 0
     while not GetCharacterCondition(fishing_condition) and is_on_boat() and attempts < 3 do
-        verbose('Attempting to cast')
+        info('Attempting to cast')
         yield('/ac Cast')
         wait()
         attempts = attempts + 1
     end
 
     if attempts == 3 then
-        verbose('Bailing on attempting to cast, ran out of attempts')
+        info('Bailing on attempting to cast, ran out of attempts')
     end
 end
 
@@ -300,10 +300,10 @@ end
 
 local function ocean_fish()
     SetAutoHookState(true)
-    verbose('Waiting for duty to start')
+    info('Waiting for duty to start')
     wait_for_start()
 
-    verbose('Moving to the deck side of the boat')
+    info('Moving to the deck side of the boat')
     move_to_deck()
 
     while is_on_boat() do
@@ -315,7 +315,7 @@ local function ocean_fish()
                 wait()
             end
 
-            verbose('Less than 35 seconds remain, just waiting now')
+            info('Less than 35 seconds remain, just waiting now')
             -- wait until the end of the zone timer plus some buffer
             wait(37)
             -- wait until the end of the zone transition cutscene
@@ -324,7 +324,7 @@ local function ocean_fish()
             wait(5)
             -- if we hit the end of the voyage, just bail out
             if has_results() then
-                verbose('Ending ocean fishing because we hit the end of the trip')
+                info('Ending ocean fishing because we hit the end of the trip')
                 close_results()
                 break
             end
@@ -364,11 +364,11 @@ local function need_to_relog(character)
 end
 
 local function relog(character)
-    verbose('Not currently on ' .. character .. ', attempting to relog')
+    info('Not currently on ' .. character .. ', attempting to relog')
     local attempts = 0
     repeat
         ARSetMultiModeEnabled(true)
-        verbose('Attempting to relog to ' .. character)
+        info('Attempting to relog to ' .. character)
         wait()
         ARRelog(character)
         wait(1)
@@ -381,27 +381,27 @@ local function relog(character)
 end
 
 local function main(character, route, gearset, repair_threshold, autoretainer_enabled, do_subs, destination)
-    verbose('Starting')
+    info('Starting')
     if character == nil then
         character = GetCharacterName(true)
-        verbose('Updating current character to ' .. character)
+        info('Updating current character to ' .. character)
     end
 
     while true do
         if GetInventoryFreeSlotCount() < 3 then
-            verbose('Inventory is almost full, stopping...')
+            info('Inventory is almost full, stopping...')
             break
         end
 
         if is_ocean_fishing_time() and GetCharacterName(true) == character then
-            verbose('Time to ocean fish')
+            info('Time to ocean fish')
             ensure_fisher(gearset)
             lifestream('oceanfish')
             queue_for_fishing(route)
             ocean_fish()
             -- desynth_fish()
             lifestream(destination)
-            verbose('Finished this round, waiting for the next one')
+            info('Finished this round, waiting for the next one')
         end
 
         -- if NeedsRepair(repair_threshold) then
@@ -419,7 +419,7 @@ local function main(character, route, gearset, repair_threshold, autoretainer_en
         wait(1)
     end
 
-    verbose('Finished')
+    info('Finished')
 end
 
 main(ocean_fisher, route_number, fisher_gearset, repair_amount, enable_autoretainer, subs_only, home_destination)
