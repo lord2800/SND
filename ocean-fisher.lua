@@ -336,22 +336,64 @@ local function ocean_fish()
     end
 end
 
--- local function open_desynth_window()
--- end
+local function open_desynth_window()
+    while not IsAddonReady('SalvageItemSelector') do
+        yield('/gaction Desynthesis')
+        wait()
+    end
+end
 
--- local function desynth_top_item()
--- end
+local function close_desynth_window()
+    while IsAddonReady('SalvageItemSelector') do
+        yield('/gaction Desynthesis')
+        wait()
+    end
+end
 
--- local function desynth_item_count()
--- end
+local function desynth_item(entry)
+    if entry < 2 then
+        return
+    end
+    yield('/callback SalvageItemSelector false 12 ' .. (entry - 2))
+    wait_for_condition(39, false)
+    wait_for_addon('SalvageDialog')
+    yield('/callback SalvageDialog true 0 1')
+    wait_for_addon('SalvageResult')
+    wait()
+end
 
--- local function desynth_fish()
---     open_desynth_window()
---     wait_for_addon('SalvageItemSelector')
---     repeat
---         desynth_top_item()
---     until desynth_item_count() == 0
--- end
+local function first_fish()
+    -- the first entry in the node table is the scroll bar
+    local entry = 2
+    while entry ~= -1 do
+        -- the magic node sequence 3, entry, 5 is the table, the specific row of the table
+        -- and then the class name required for desynth
+        local class = GetNodeText('SalvageItemSelector', 3, entry, 5)
+        -- the magic node sequence 3, entry, 2 is the table, the specific row of the table
+        -- and then the skill level required (ocean fishing fish always require 1)
+        local skillLevelText = GetNodeText('SalvageItemSelector', 3, entry, 2)
+        local skillLevel = tonumber(skillLevelText:sub(0, 2)) -- make sure no trailing garbage
+        -- and at least 2 possible digits
+        if class == 'Culinarian' and skillLevel == 1 then
+            break
+        end
+        if class == '' and skillLevelText == '' then
+            -- we hit the end
+            entry = -1
+        end
+        entry = entry + 1
+    end
+    return entry
+end
+
+local function desynth_fish()
+    open_desynth_window()
+    local entry = first_fish()
+    repeat
+        desynth_item(entry)
+        entry = first_fish()
+    until entry == -1
+end
 
 local function ensure_fisher(gearset)
     if GetClassJobId() ~= fisher_job then
