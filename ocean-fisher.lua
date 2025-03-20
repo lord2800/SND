@@ -380,6 +380,7 @@ local function first_fish()
         if class == '' and skillLevelText == '' then
             -- we hit the end
             entry = -1
+            break
         end
         entry = entry + 1
     end
@@ -393,6 +394,7 @@ local function desynth_fish()
         desynth_item(entry)
         entry = first_fish()
     until entry == -1
+    close_desynth_window()
 end
 
 local function ensure_fisher(gearset)
@@ -443,7 +445,7 @@ local function main(character, route, gearset, repair_threshold, autoretainer_en
             lifestream('oceanfish')
             queue_for_fishing(route)
             ocean_fish()
-            -- desynth_fish()
+            desynth_fish()
             lifestream(destination)
             info('Finished this round, waiting for the next one')
         end
