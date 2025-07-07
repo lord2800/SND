@@ -40,6 +40,8 @@ local subs_only = true
 local ocean_fisher = nil
 -- home destination to wait at after fishing
 local home_destination = 'fc'
+-- desynth the fish you get while ocean fishing at the end of the voyage
+local enable_desynth = false
 
 -- data
 local baits = {
@@ -101,10 +103,13 @@ local function wait(duration)
     yield('/wait ' .. (duration or wait_duration))
 end
 
-local function wait_for_addon(addon)
+local function wait_for_addon(addon, duration, max_attempts)
     info('Waiting for addon ' .. addon)
-    while not IsAddonReady(addon) do
-        wait()
+    local attempts = 0
+    max_attempts = max_attempts or 20
+    while not IsAddonReady(addon) and attempts < max_attempts do
+        wait(duration)
+        attempts = attempts + 1
     end
 end
 
@@ -426,7 +431,7 @@ local function relog(character)
     ARSetMultiModeEnabled(false)
 end
 
-local function main(character, route, gearset, repair_threshold, autoretainer_enabled, do_subs, destination)
+local function main(character, route, gearset, repair_threshold, autoretainer_enabled, do_subs, destination, should_desynth_fish)
     info('Starting')
     if character == nil then
         character = GetCharacterName(true)
@@ -445,8 +450,10 @@ local function main(character, route, gearset, repair_threshold, autoretainer_en
             lifestream('oceanfish')
             queue_for_fishing(route)
             ocean_fish()
-            desynth_fish()
             lifestream(destination)
+            if should_desynth_fish then
+                desynth_fish()
+            end
             info('Finished this round, waiting for the next one')
         end
 
@@ -468,4 +475,4 @@ local function main(character, route, gearset, repair_threshold, autoretainer_en
     info('Finished')
 end
 
-main(ocean_fisher, route_number, fisher_gearset, repair_amount, enable_autoretainer, subs_only, home_destination)
+main(ocean_fisher, route_number, fisher_gearset, repair_amount, enable_autoretainer, subs_only, home_destination, enable_desynth)
